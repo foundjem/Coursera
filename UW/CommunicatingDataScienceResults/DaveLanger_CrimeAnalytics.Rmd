@@ -1,0 +1,118 @@
+---
+title: "Week 1 Assignment - Crime Analytics"
+author: "Dave Langer"
+date: "Sunday, November 29, 2015"
+output:
+  html_document: default
+---
+***
+## Wanna Play it Safe? Try West Seattle on a Tuesday Morning!
+
+<br>
+We all have a vested interest in keeping ourselves, and our loved ones, safe. All you need to do is tune into the evening news to be reminded that crime is an ever-present aspect of modern life. While crime can take on many forms, for my analysis I was primarily interested in understanding more about violent crime in Seattle during the Summer of 2014, leveraging the "seattle_incidents_summer_2014.csv" data set provided by the course instructors.
+
+The following visualization illustrates the summarized occurrences of criminal offenses within the data set.
+
+```{r, echo=FALSE, message=FALSE, warnings=FALSE, fig.height=8, fig.width=8}
+# NOTE - Code requires the following libraries to execute the rmarkdown yourself
+library(lubridate)
+library(plyr)
+library(ggplot2)
+
+# Load up Seattle crime data
+seattle.data <- read.csv("seattle_incidents_summer_2014.csv", header = TRUE)
+
+# Set factors
+seattle.data$Summarized.Offense.Description <- as.factor(seattle.data$Summarized.Offense.Description)
+seattle.data$District.Sector <- as.factor(seattle.data$District.Sector)
+
+# Parse strings as date-time objects
+seattle.data$Reported.Date.Time <- parse_date_time(seattle.data$Date.Reported, "%m/%d/%y %I:%M:%S %p")
+seattle.data$Start.Date.Time <- parse_date_time(seattle.data$Occurred.Date.or.Date.Range.Start, "%m/%d/%y %I:%M:%S %p")
+
+# Add hour & day variables
+seattle.data$Start.Hour <- hour(seattle.data$Start.Date.Time)
+seattle.data$Start.Day <- weekdays(seattle.data$Start.Date.Time)
+
+
+crime.totals <- ddply(seattle.data, c("Summarized.Offense.Description"), nrow)
+ggplot(crime.totals, aes(x = reorder(Summarized.Offense.Description, V1), y = V1)) +
+  geom_bar(stat = "identity") +
+  coord_flip() +
+  xlab("Criminal Offense") +
+  ylab("Number of Offenses") +
+  ggtitle("Seattle Criminal Offenses - Summer 2014")
+```
+
+The plot clearly illustrates that property-related crimes (e.g., "CAR PROWL") were by far the most common criminal offense within Seattle during the Summer of 2014. The plot also illustrates that assault was the single most common violent criminal offense, occurring at rates more than double the next most common violent criminal offense - robbery. Given the relatively high occurrence of assault, the remainder of my analysis will focus on understanding more about Seattle-area assaults as documented in the data. 
+
+<br>
+
+***
+### Where Were Assaults Happening?
+
+<br>
+With a focus on Seattle-area assaults, the first question that pops to mind is, "where were the assaults happening in the Summer of 2014?" The following visualization answers this question, organized by Seattle Police district codes.
+
+```{r, echo=FALSE, message=FALSE, warnings=FALSE, results='asis'}
+# Pull out just the assault data
+assaults.data <- seattle.data[which(seattle.data$Summarized.Offense.Description == "ASSAULT"),]
+
+# Plot criminal occurrences by Seattle Police districts
+assaults.district <- ddply(assaults.data, c("District.Sector"), nrow)
+ggplot(assaults.district, aes(x = reorder(District.Sector, V1), y = V1)) +
+  geom_bar(stat = "identity") +
+  coord_flip() +
+  xlab("Number of Assaults") +
+  ylab("Seattle District") +
+  ggtitle("Seattle Assaults by Seattle Police District- Summer 2014")
+```
+
+As illustrated by the plot above, the district of West Seattle (denoted in the plot above by District W) had the lowest occurrences of assaults during the Summer of 2014.
+
+<br>
+
+***
+### When Were Assaults Happening?
+
+<br>
+Having determined where the assaults were happening, the next logical question is to ask when assaults were happening. The following plot illustrates the occurrences of assaults in Seattle by each day of the week. 
+
+
+```{r, echo=FALSE, message=FALSE, warnings=FALSE, results='asis'}
+# Plot assault occurrences by day of the week
+assaults.day.of.week <- ddply(assaults.data, c("Start.Day"), nrow)
+assaults.day.of.week$Start.Day <- factor(assaults.day.of.week$Start.Day, 
+                                         levels = c("Monday", "Tuesday", "Wednesday", 
+                                                   "Thursday", "Friday", "Saturday", 
+                                                   "Sunday"))
+ggplot(assaults.day.of.week, aes(x = as.integer(Start.Day), y = V1)) +
+  geom_line() +
+  geom_point(size=4, shape=21, fill="white") +
+  scale_x_discrete("Day of the Week", labels = levels(assaults.day.of.week$Start.Day)) +
+  ylab("Number of Assaults") +
+  ggtitle("Seattle Assaults by Day of the Week - Summer 2014")
+```
+
+Not surprisingly, the plot above jives with intuition that the bulk of Seattle assaults happened during weekends during the Summer of 2014. That being said, one interesting aspect of the visualization is the relatively high assault occurrences on Wednesdays. Moving on, the following visualization illustrates assault occurrences by hour of the day.
+
+```{r, echo=FALSE, message=FALSE, warnings=FALSE, results='asis'}
+# Plot assault occurrences by hour of the day
+assaults.hour.of.day <- ddply(assaults.data, c("Start.Hour"), nrow) 
+ggplot(assaults.hour.of.day, aes(x = Start.Hour, y = V1)) +
+  geom_line() +
+  geom_point(size=4, shape=21, fill="white") +
+  xlab("Hour of the Day (24-hour clock)") +
+  ylab("Number of Assaults") +
+  ggtitle("Seattle Assaults by Hour of the Day - Summer 2014")
+```
+
+Again, the visualization aligns with our intuition that assaults in Seattle during the Summer of 2014 disproportionately occurred during the evening and nighttime hours.
+
+<br>
+
+***
+### Findings
+
+<br>
+Based on this analysis of the data, residents of the West Seattle neighborhood that were up and about early on Tuesday mornings getting their daily Starbucks coffee had the least chance of being assaulted during the Summer of 2014.
